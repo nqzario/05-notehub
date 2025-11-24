@@ -6,11 +6,10 @@ import type { FetchNotesResponse } from "../../services/noteService";
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
 import Modal from "../Modal/Modal";
-import { Toaster, toast } from "react-hot-toast";
 import NoteForm from "../NoteForm/NoteForm";
-
 import SearchBox from "../SearchBox/SearchBox";
 import { useDebounce } from "use-debounce";
+import { Toaster, toast } from "react-hot-toast";
 
 export interface NoteFormValues {
   title: string;
@@ -22,10 +21,16 @@ const App = () => {
   const [page, setPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
-
   const [debouncedSearch] = useDebounce(search, 500);
 
   const queryClient = useQueryClient();
+
+  // Скидаємо сторінку на 1 при зміні пошуку
+  // замість useEffect для скидання сторінки
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1); // відразу скидаємо сторінку при зміні пошуку
+  };
 
   const { data, isLoading, isError } = useQuery<FetchNotesResponse, Error>({
     queryKey: ["notes", page, debouncedSearch],
@@ -38,17 +43,19 @@ const App = () => {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Видалення нотатки
   const handleDeleteNote = async (id: string) => {
     try {
       await deleteNote(id);
       queryClient.invalidateQueries({ queryKey: ["notes"] });
-      toast.success("Note has been delete!");
+      toast.success("Note has been deleted!");
     } catch (err) {
       console.error(err);
-      toast.error("Note not delete!");
+      toast.error("Note could not be deleted!");
     }
   };
 
+  // Створення нотатки
   const handleCreateNote = async (values: NoteFormValues) => {
     try {
       await createNote(values);
@@ -57,7 +64,7 @@ const App = () => {
       toast.success("Note has been created!");
     } catch (err) {
       console.error(err);
-      toast.error("Note not created!");
+      toast.error("Note could not be created!");
     }
   };
 
@@ -67,11 +74,14 @@ const App = () => {
   return (
     <div className={css.app}>
       <Toaster position="top-right" reverseOrder={false} />
+
       <header className={css.toolbar}>
-        <SearchBox value={search} onChange={setSearch} /> {/* ← ДОДАНО */}
+        <SearchBox value={search} onChange={handleSearchChange} />
+
         <button className={css.button} onClick={() => setModalOpen(true)}>
           Create note
         </button>
+
         <Pagination
           totalPages={data.totalPages}
           currentPage={page}
