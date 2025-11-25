@@ -1,7 +1,7 @@
 import { useState } from "react";
 import css from "./App.module.css";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchNotes, createNote, deleteNote } from "../../services/noteService";
+import { useQuery } from "@tanstack/react-query";
+import { fetchNotes } from "../../services/noteService";
 import type { FetchNotesResponse } from "../../services/noteService";
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
@@ -9,7 +9,7 @@ import Modal from "../Modal/Modal";
 import NoteForm from "../NoteForm/NoteForm";
 import SearchBox from "../SearchBox/SearchBox";
 import { useDebounce } from "use-debounce";
-import { Toaster, toast } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 
 export interface NoteFormValues {
   title: string;
@@ -23,13 +23,10 @@ const App = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
 
-  const queryClient = useQueryClient();
-
-  // Скидаємо сторінку на 1 при зміні пошуку
-  // замість useEffect для скидання сторінки
+  // скидаємо сторінку при зміні пошуку
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setPage(1); // відразу скидаємо сторінку при зміні пошуку
+    setPage(1);
   };
 
   const { data, isLoading, isError } = useQuery<FetchNotesResponse, Error>({
@@ -41,32 +38,8 @@ const App = () => {
         search: debouncedSearch,
       }),
     staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev,
   });
-
-  // Видалення нотатки
-  const handleDeleteNote = async (id: string) => {
-    try {
-      await deleteNote(id);
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      toast.success("Note has been deleted!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Note could not be deleted!");
-    }
-  };
-
-  // Створення нотатки
-  const handleCreateNote = async (values: NoteFormValues) => {
-    try {
-      await createNote(values);
-      setModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      toast.success("Note has been created!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Note could not be created!");
-    }
-  };
 
   if (isLoading) return <p>Loading...</p>;
   if (isError || !data) return <p>Error loading notes...</p>;
@@ -82,21 +55,20 @@ const App = () => {
           Create note
         </button>
 
-        <Pagination
-          totalPages={data.totalPages}
-          currentPage={page}
-          onPageChange={(newPage) => setPage(newPage)}
-        />
+        {data.totalPages > 1 && (
+          <Pagination
+            totalPages={data.totalPages}
+            currentPage={page}
+            onPageChange={(newPage) => setPage(newPage)}
+          />
+        )}
       </header>
 
-      <NoteList notes={data.notes} onDelete={handleDeleteNote} />
+      {data.notes.length > 0 && <NoteList notes={data.notes} />}
 
       {isModalOpen && (
         <Modal onClose={() => setModalOpen(false)}>
-          <NoteForm
-            onSubmit={handleCreateNote}
-            onCancel={() => setModalOpen(false)}
-          />
+          <NoteForm onCancel={() => setModalOpen(false)} />
         </Modal>
       )}
     </div>

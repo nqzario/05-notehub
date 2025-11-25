@@ -1,12 +1,27 @@
 import type { Note } from "../../types/note";
 import css from "./NoteList.module.css";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteNote } from "../../services/noteService";
+import { toast } from "react-hot-toast";
 
 interface NoteListProps {
   notes: Note[];
-  onDelete: (id: string) => void; // додали пропс для обробки видалення
 }
 
-const NoteList: React.FC<NoteListProps> = ({ notes, onDelete }) => {
+const NoteList: React.FC<NoteListProps> = ({ notes }) => {
+  const queryClient = useQueryClient();
+
+  const { mutate: deleteNoteMutate } = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      toast.success("Note deleted!");
+    },
+    onError: () => {
+      toast.error("Failed to delete note");
+    },
+  });
+
   if (!notes || notes.length === 0) return null;
 
   return (
@@ -18,9 +33,10 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onDelete }) => {
 
           <div className={css.footer}>
             <span className={css.tag}>{note.tag}</span>
+
             <button
               className={css.button}
-              onClick={() => onDelete(note.id)} // викликаємо onDelete з id нотатки
+              onClick={() => deleteNoteMutate(note.id)}
             >
               Delete
             </button>
