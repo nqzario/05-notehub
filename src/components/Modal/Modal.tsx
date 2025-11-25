@@ -8,6 +8,7 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ children, onClose }) => {
+  // Закриваємо модалку по Escape
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -15,6 +16,15 @@ const Modal: React.FC<ModalProps> = ({ children, onClose }) => {
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
+
+  // Блокуємо скрол під модалкою
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   return createPortal(
     <div
